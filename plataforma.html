@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS — Leitor de Fluxo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#02060d;
+    --bg2:#040b16;
+    --ciano:#3ad6ff;
+    --ciano-soft:#7fe7ff;
+    --ciano-deep:#0a7fa8;
+    --gold:#ffcf6b;
+    --line:rgba(58,214,255,.18);
+    --glow:0 0 12px rgba(58,214,255,.55);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:#cfeefb;
+    font-family:'Rajdhani',sans-serif;
+    overflow-x:hidden;
+    min-height:100vh;
+  }
+  /* atmosfera de fundo: grade holográfica + vinheta */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(ellipse at 50% 12%, rgba(58,214,255,.10), transparent 55%),
+      radial-gradient(ellipse at 50% 100%, rgba(10,127,168,.10), transparent 60%),
+      linear-gradient(transparent 0 2px, var(--line) 2px 3px) 0 0/100% 46px,
+      linear-gradient(90deg, transparent 0 2px, var(--line) 2px 3px) 0 0/46px 100%;
+    opacity:.5;
+    mask:radial-gradient(ellipse at 50% 40%, #000 30%, transparent 85%);
+  }
+  /* linha de varredura */
+  body::after{
+    content:"";position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:linear-gradient(rgba(58,214,255,.05) 50%, transparent 50%);
+    background-size:100% 4px;
+    animation:scan 8s linear infinite;opacity:.4;
+  }
+  @keyframes scan{from{background-position:0 0}to{background-position:0 100%}}
+
+  /* ---------- TOPO ---------- */
+  header{
+    position:relative;z-index:5;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:22px 40px;
+    border-bottom:1px solid var(--line);
+    backdrop-filter:blur(2px);
+  }
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand .mark{
+    width:34px;height:34px;border-radius:50%;
+    border:1.5px solid var(--ciano);
+    box-shadow:var(--glow),inset 0 0 8px rgba(58,214,255,.4);
+    position:relative;
+  }
+  .brand .mark::before{
+    content:"";position:absolute;inset:6px;border-radius:50%;
+    border:1px solid var(--ciano-soft);opacity:.7;
+  }
+  .brand .mark::after{
+    content:"";position:absolute;inset:13px;border-radius:50%;
+    background:var(--ciano);box-shadow:var(--glow);
+  }
+  .brand h1{
+    font-family:'Orbitron',sans-serif;font-weight:700;
+    font-size:1.05rem;letter-spacing:.35em;color:#eafaff;
+  }
+  nav{display:flex;gap:30px;font-family:'Share Tech Mono',monospace;
+    font-size:.78rem;letter-spacing:.15em;text-transform:uppercase}
+  nav a{color:#8fcadf;text-decoration:none;transition:.25s;position:relative}
+  nav a:hover{color:var(--ciano);text-shadow:var(--glow)}
+  .status{display:flex;align-items:center;gap:8px;color:#7fe7ff;
+    font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.1em}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--ciano);
+    box-shadow:var(--glow);animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;z-index:5;
+    min-height:calc(100vh - 80px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:40px 20px;
+  }
+  /* núcleo / reactor central */
+  .core{
+    position:relative;width:340px;height:340px;margin-bottom:10px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .ring{position:absolute;border-radius:50%;border:1px solid var(--ciano);
+    box-shadow:0 0 18px rgba(58,214,255,.25);opacity:.85}
+  .ring.r1{inset:0;border-style:solid;border-color:rgba(58,214,255,.35);
+    animation:spin 24s linear infinite}
+  .ring.r2{inset:36px;border-color:rgba(127,231,255,.5);
+    border-top-color:transparent;border-bottom-color:transparent;
+    animation:spin 14s linear infinite reverse}
+  .ring.r3{inset:74px;border-color:rgba(58,214,255,.4);
+    border-left-color:transparent;animation:spin 18s linear infinite}
+  .ring.r4{inset:108px;border:1.5px dashed rgba(127,231,255,.4);
+    animation:spin 30s linear infinite reverse}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .core-center{
+    width:120px;height:120px;border-radius:50%;position:relative;z-index:2;
+    background:radial-gradient(circle,#bff3ff 0%,var(--ciano) 35%,var(--ciano-deep) 75%,transparent 100%);
+    box-shadow:0 0 50px rgba(58,214,255,.7),0 0 100px rgba(58,214,255,.35);
+    animation:breathe 3.5s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{transform:scale(1);opacity:.92}50%{transform:scale(1.07);opacity:1}}
+  /* ticks ao redor */
+  .ticks{position:absolute;inset:0;animation:spin 60s linear infinite}
+  .ticks span{position:absolute;left:50%;top:0;width:1px;height:12px;
+    background:var(--ciano-soft);transform-origin:0 170px;opacity:.5}
+
+  .hero h2{
+    font-family:'Orbitron',sans-serif;font-weight:900;
+    font-size:clamp(2.2rem,6vw,4rem);letter-spacing:.18em;
+    color:#eafaff;text-shadow:0 0 22px rgba(58,214,255,.5);
+    margin-top:18px;
+  }
+  .hero .tag{
+    font-family:'Share Tech Mono',monospace;font-size:.85rem;
+    letter-spacing:.42em;text-transform:uppercase;color:var(--ciano);
+    margin-top:14px;opacity:.9;
+  }
+  .hero p.lead{
+    max-width:540px;margin:26px auto 0;font-size:1.12rem;
+    font-weight:300;line-height:1.6;color:#a9d6e8;
+  }
+  .cta-row{display:flex;gap:18px;margin-top:38px;flex-wrap:wrap;justify-content:center}
+  .btn{
+    font-family:'Share Tech Mono',monospace;font-size:.82rem;
+    letter-spacing:.2em;text-transform:uppercase;text-decoration:none;
+    padding:15px 34px;border:1px solid var(--ciano);color:#eafaff;
+    background:rgba(58,214,255,.06);position:relative;transition:.3s;
+    clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+  }
+  .btn:hover{background:rgba(58,214,255,.18);box-shadow:var(--glow);color:#fff}
+  .btn.ghost{border-color:rgba(127,231,255,.4);color:#9fd4e8}
+
+  /* ---------- MÓDULOS ---------- */
+  .modules{
+    position:relative;z-index:5;max-width:1100px;margin:0 auto;
+    padding:90px 30px 110px;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;
+  }
+  .mod{
+    border:1px solid var(--line);background:rgba(4,11,22,.6);
+    padding:30px 26px;position:relative;transition:.3s;
+    clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));
+  }
+  .mod:hover{border-color:var(--ciano);box-shadow:0 0 24px rgba(58,214,255,.15);transform:translateY(-3px)}
+  .mod .idx{font-family:'Share Tech Mono',monospace;font-size:.72rem;
+    color:var(--ciano);letter-spacing:.2em;opacity:.7}
+  .mod h3{font-family:'Orbitron',sans-serif;font-weight:500;font-size:1.05rem;
+    color:#eafaff;margin:12px 0 10px;letter-spacing:.06em}
+  .mod p{font-weight:300;line-height:1.55;color:#9fc5d6;font-size:.98rem}
+
+  footer{
+    position:relative;z-index:5;text-align:center;padding:30px;
+    border-top:1px solid var(--line);font-family:'Share Tech Mono',monospace;
+    font-size:.72rem;letter-spacing:.15em;color:#5f93a8;
+  }
+  @media(max-width:640px){
+    header{padding:18px 20px;flex-wrap:wrap;gap:12px}
+    nav{order:3;width:100%;justify-content:center;gap:20px}
+    .core{width:260px;height:260px}
+    .ring.r4{inset:80px}.ring.r3{inset:56px}.ring.r2{inset:28px}
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="mark"></div>
+      <h1>J · A · R · V · I · S</h1>
+    </div>
+    <nav>
+      <a href="#modulos">Sistema</a>
+      <a href="/plataforma">Plataforma</a>
+      <a href="#sobre">Núcleo</a>
+    </nav>
+    <div class="status"><span class="dot"></span>SISTEMA ONLINE</div>
+  </header>
+
+  <section class="hero">
+    <div class="core">
+      <div class="ticks" id="ticks"></div>
+      <div class="ring r1"></div>
+      <div class="ring r2"></div>
+      <div class="ring r3"></div>
+      <div class="ring r4"></div>
+      <div class="core-center"></div>
+    </div>
+    <h2>JARVIS</h2>
+    <div class="tag">Just A Rather Very Intelligent System</div>
+    <p class="lead">
+      Plataforma de leitura de fluxo de ordens em tempo real. O sensor lê o
+      mercado, o núcleo interpreta a microestrutura, e você decide.
+    </p>
+    <div class="cta-row">
+      <a href="/plataforma" class="btn">Acessar Plataforma</a>
+      <a href="#modulos" class="btn ghost">Conhecer o Sistema</a>
+    </div>
+  </section>
+
+  <section class="modules" id="modulos">
+    <div class="mod">
+      <div class="idx">// SENSOR</div>
+      <h3>EA Leitor</h3>
+      <p>O Expert Advisor lê o fluxo no MetaTrader 5 e transmite as métricas — CVD Z-Score, semi-variância, aceleração — direto para o núcleo.</p>
+    </div>
+    <div class="mod">
+      <div class="idx">// NÚCLEO</div>
+      <h3>Inteligência</h3>
+      <p>Conectado à IA por API, o núcleo interpreta o estado do fluxo e devolve uma leitura objetiva. Pronto para ligar quando você quiser.</p>
+    </div>
+    <div class="mod">
+      <div class="idx">// INTERFACE</div>
+      <h3>Plataforma</h3>
+      <p>Os dados aparecem aqui em tempo real, num painel holográfico. Você acompanha o que o mercado está fazendo, candle a candle.</p>
+    </div>
+  </section>
+
+  <footer id="sobre">
+    JARVIS PLATFORM · v0.1 · NÚCLEO EM STANDBY · IA AGUARDANDO ATIVAÇÃO
+  </footer>
+
+  <script>
+    // gera os ticks ao redor do núcleo
+    const t = document.getElementById('ticks');
+    for(let i=0;i<48;i++){
+      const s=document.createElement('span');
+      s.style.transform=`rotate(${i*7.5}deg)`;
+      if(i%6===0){s.style.height='18px';s.style.opacity='.8';}
+      t.appendChild(s);
+    }
+  </script>
+</body>
+</html>
