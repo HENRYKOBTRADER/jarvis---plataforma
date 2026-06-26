@@ -1,2 +1,4 @@
-# jarvis---plataforma
-plataforma trader inteligente
+__pycache__/
+*.pyc
+.env
+venv/

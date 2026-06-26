@@ -1,0 +1,126 @@
+"""
+JARVIS Platform - Backend
+Servidor que conecta o EA leitor (MT5), a interface web e a API da Anthropic.
+
+A análise via Claude já está codada, mas fica DESATIVADA até você
+definir a variável de ambiente ANTHROPIC_API_KEY no Render.
+Sem a chave, o servidor funciona normalmente em "modo demonstração".
+"""
+
+import os
+import json
+import time
+from flask import Flask, request, jsonify, render_template
+
+app = Flask(__name__)
+
+# ---------------------------------------------------------------------------
+# Estado em memória: guarda a última leitura enviada pelo EA.
+# Simples de propósito. Quando quiser persistência, troca por um banco.
+# ---------------------------------------------------------------------------
+ultima_leitura = {
+    "timestamp": None,
+    "simbolo": None,
+    "dados": {},          # aqui entram CVD Z-Score, semi-variância, etc.
+    "analise_claude": None
+}
+
+# Chave da API - lida do ambiente. Se não existir, IA fica desligada.
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+IA_ATIVA = bool(ANTHROPIC_API_KEY)
+
+
+# ===========================================================================
+# ROTAS DA INTERFACE WEB
+# ===========================================================================
+
+@app.route("/")
+def home():
+    """Página inicial - apresentação da plataforma."""
+    return render_template("index.html")
+
+
+@app.route("/plataforma")
+def plataforma():
+    """Área da plataforma - onde os dados do EA aparecem."""
+    return render_template("plataforma.html", ia_ativa=IA_ATIVA)
+
+
+# ===========================================================================
+# API - O EA (MT5) CONVERSA COM ESTES ENDPOINTS
+# ===========================================================================
+
+@app.route("/api/leitura", methods=["POST"])
+def receber_leitura():
+    """
+    O EA leitor envia os dados de fluxo para cá via WebRequest().
+    Espera um JSON tipo:
+    {
+        "simbolo": "BTCUSD",
+        "dados": { "cvd_zscore": 1.84, "semi_variancia": 0.42, ... }
+    }
+    """
+    try:
+        payload = request.get_json(force=True)
+    except Exception:
+        return jsonify({"erro": "JSON inválido"}), 400
+
+    ultima_leitura["timestamp"] = int(time.time())
+    ultima_leitura["simbolo"] = payload.get("simbolo", "?")
+    ultima_leitura["dados"] = payload.get("dados", {})
+
+    # Quando a IA estiver ativa, gera a análise aqui.
+    if IA_ATIVA:
+        ultima_leitura["analise_claude"] = analisar_com_claude(ultima_leitura)
+    else:
+        ultima_leitura["analise_claude"] = None
+
+    return jsonify({"status": "recebido", "ia_ativa": IA_ATIVA})
+
+
+@app.route("/api/estado", methods=["GET"])
+def estado():
+    """O site consulta este endpoint para mostrar a última leitura."""
+    return jsonify(ultima_leitura)
+
+
+# ===========================================================================
+# INTEGRAÇÃO COM CLAUDE  (já pronta, ativa só com a chave)
+# ===========================================================================
+
+def analisar_com_claude(leitura):
+    """
+    Monta o prompt com os dados de fluxo e pede uma análise ao Claude.
+    Só roda se ANTHROPIC_API_KEY existir. Custa créditos quando ativo.
+    """
+    if not IA_ATIVA:
+        return None
+
+    # Import local: a lib só é necessária quando a IA está ligada.
+    import anthropic
+
+    cliente = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+    dados_texto = json.dumps(leitura["dados"], indent=2, ensure_ascii=False)
+    prompt = (
+        f"Você é o JARVIS, analista de fluxo de ordens. "
+        f"Símbolo: {leitura['simbolo']}.\n"
+        f"Leitura atual do EA:\n{dados_texto}\n\n"
+        f"Dê uma leitura objetiva e curta do estado do fluxo."
+    )
+
+    try:
+        resposta = cliente.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return resposta.content[0].text
+    except Exception as e:
+        return f"[erro ao consultar Claude: {e}]"
+
+
+# ===========================================================================
+if __name__ == "__main__":
+    porta = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=porta)
